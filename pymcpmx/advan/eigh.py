@@ -69,18 +69,13 @@ def eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
     if y0 is None:
         y0 = jnp.zeros_like(lambdas)
 
-    # Build time grid (identical logic to model.py) ---------------------------
-    _meas = np.asarray(meas_time)
-    _itimes = np.asarray(infu_time)
-    _irates = np.asarray(infu_rate)
+    tbeg = min(meas_time[0], infu_time[0])
+    tend = meas_time[-1]
 
-    _start = min(float(_meas[0]), float(_itimes[0]))
-    _end = float(_meas[-1])
-
-    _relevant_itimes = _itimes[(_itimes >= _start) & (_itimes <= _end)]
-    _all_times = np.unique(np.concatenate([_relevant_itimes, _meas]))
+    _relevant_itimes = infu_time[(infu_time >= tbeg) & (infu_time <= tend)]
+    _all_times = np.unique(np.concatenate([_relevant_itimes, meas_time]))
     _dts = np.diff(_all_times)
-    _rates = np.array([rate_at(t, _itimes, _irates) for t in _all_times[:-1]])
+    _rates = np.array([rate_at(t, infu_time, infu_rate) for t in _all_times[:-1]])
 
     dts = jnp.array(_dts)
     rates = jnp.array(_rates)
@@ -99,7 +94,7 @@ def eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
         [state0[None, :], all_states], axis=0
     )  # (n_steps+1, 3)
 
-    _meas_indices = np.where(np.isin(_all_times, _meas))[0]
+    _meas_indices = np.where(np.isin(_all_times, meas_time))[0]
     states_at_meas = all_states_with_init[_meas_indices]  # (n_meas, 3)
 
     Cp = jnp.sum(states_at_meas, axis=-1)  # (n_meas,)
