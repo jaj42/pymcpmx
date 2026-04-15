@@ -12,7 +12,7 @@ import pytensor.tensor as pt
 from pymc_extras.inference import fit_dadvi
 from pytensor import wrap_jax
 import jax
-from pymcpmx.advan import eig_solver as solver
+from pymcpmx.advan import eig_advan as advan
 from pymcpmx.io import read_dataset
 from pymcpmx.utils import add_omegas
 
@@ -89,7 +89,7 @@ def build_model(rates, dv, covar, bio_map) -> pm.Model:
                 ]
             )  # fmt: skip
 
-            Cp = solver(
+            Cp = advan(
                 system_matrix=S,
                 meas_time=meas_time,
                 infu_time=infu_time,

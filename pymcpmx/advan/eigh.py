@@ -31,7 +31,7 @@ def eigendecomposition(k10, k12, k13, k21, k31, V1, V2, V3):
 
 
 @wrap_jax
-def eigh_solver(y0, meas_time, infu_time, infu_rate, params):
+def eigh_advan(y0, meas_time, infu_time, infu_rate, params):
     p = params
     k10 = p["k10"]
     k12 = p["k12"]

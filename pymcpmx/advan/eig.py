@@ -27,7 +27,7 @@ def eigendecomposition(S, scale, cmt=0):
 
 
 @wrap_jax
-def eig_solver(
+def eig_advan(
     system_matrix, meas_time, infu_time, infu_rate, y0=None, scale=1.0, cmt=0
 ):
     lambdas, coefs = eigendecomposition(system_matrix, scale, cmt)

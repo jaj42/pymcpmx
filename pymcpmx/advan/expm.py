@@ -14,7 +14,7 @@ def rate_at(t, infu_time, infu_rate):
 
 
 @wrap_jax
-def expm_solver(y0, meas_time, infu_time, infu_rate, params):
+def expm_advan(y0, meas_time, infu_time, infu_rate, params):
     p = params
     k10 = p["k10"]
     k12 = p["k12"]

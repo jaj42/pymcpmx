@@ -29,7 +29,7 @@ def pk_ode(t, y, p):
 
 
 @wrap_jax
-def ode_scan_solver(y0, meas_time, infu_time, infu_rate, params):
+def ode_advan(y0, meas_time, infu_time, infu_rate, params):
     _meas = np.asarray(meas_time)
     _itimes = np.asarray(infu_time)
     _irates = np.asarray(infu_rate)
