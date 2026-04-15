@@ -2,14 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from pytensor import wrap_jax
-
-
-def rate_at(t, infu_time, infu_rate):
-    if t < infu_time[0]:
-        return 0.0
-    idx = np.searchsorted(infu_time[1:], t, side="right")
-    idx = int(np.clip(idx, 0, len(infu_rate) - 1))
-    return float(infu_rate[idx])
+from pymcpmx.utils import rate_at
 
 
 def eigendecomposition(S, scale, cmt=0):

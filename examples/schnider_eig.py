@@ -12,7 +12,7 @@ import pytensor.tensor as pt
 from pymc_extras.inference import fit_dadvi
 from pytensor import wrap_jax
 import jax
-from pymcpmx.advan import eig_advan as advan
+from pymcpmx.advan import threecomp_advan as advan
 from pymcpmx.io import read_dataset
 from pymcpmx.utils import add_omegas
 
@@ -80,22 +80,14 @@ def build_model(rates, dv, covar, bio_map) -> pm.Model:
             k21 = Q2 / V2
             k13 = Q3 / V1
             k31 = Q3 / V3
-            k123 = k10 + k12 + k13
-            S = pt.stack(
-                [
-                    pt.stack([-k123,  k12,  k13]),
-                    pt.stack([  k21, -k21,  0.0]),
-                    pt.stack([  k31,  0.0, -k31]),
-                ]
-            )  # fmt: skip
+            params = {
+                "k10": k10,
+                "k12": k12, "k21": k21,
+                "k13": k13, "k31": k31,
+                "V1": V1, "V2": V2, "V3": V3,
+            }  # fmt: skip
 
-            Cp = advan(
-                system_matrix=S,
-                meas_time=meas_time,
-                infu_time=infu_time,
-                infu_rate=infu_rate,
-                scale=V1,
-            )
+            Cp = advan(meas_time, infu_time, infu_rate, params)
             C_preds.append(Cp)
 
         IPRED = pt.concatenate(C_preds)

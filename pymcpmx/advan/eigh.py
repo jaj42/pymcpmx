@@ -2,36 +2,31 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from pytensor import wrap_jax
-
-
-def rate_at(t, infu_time, infu_rate):
-    """Return piecewise-constant infusion rate at time t (numpy, for static use)."""
-    if t < infu_time[0]:
-        return 0.0
-    idx = np.searchsorted(infu_time[1:], t, side="right")
-    idx = int(np.clip(idx, 0, len(infu_rate) - 1))
-    return float(infu_rate[idx])
-
-
-def eigendecomposition(k10, k12, k13, k21, k31, V1, V2, V3):
-    a2 = k12 * jnp.sqrt(V1 / V2)
-    a3 = k13 * jnp.sqrt(V1 / V3)
-    k123 = k10 + k12 + k13
-    A_sym = jnp.asarray(
-        [
-            [-k123, a2, a3],
-            [a2, -k21, 0],
-            [a3, 0, -k31],
-        ]
-    )
-    eigvals, eigvecs = jnp.linalg.eigh(A_sym)
-    lambdas = -eigvals
-    p_coef = eigvecs[0, :] ** 2 / (V1 * lambdas)
-    return lambdas, p_coef
+from pymcpmx.utils import rate_at
 
 
 @wrap_jax
-def eigh_advan(y0, meas_time, infu_time, infu_rate, params):
+def twocomp_advan(meas_time, infu_time, infu_rate, params, y0=None):
+    p = params
+    k10 = p["k10"]
+    k12 = p["k12"]
+    k21 = p["k21"]
+    V1 = p["V1"]
+    V2 = p["V2"]
+
+    a2 = k12 * jnp.sqrt(V1 / V2)
+    k12 = k10 + k12
+    S = jnp.asarray(
+        [
+            [-k12,   a2],
+            [  a2, -k21],
+        ]
+    )  # fmt: skip
+    return eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0, scale=V1)
+
+
+@wrap_jax
+def threecomp_advan(meas_time, infu_time, infu_rate, params, y0=None):
     p = params
     k10 = p["k10"]
     k12 = p["k12"]
@@ -42,7 +37,37 @@ def eigh_advan(y0, meas_time, infu_time, infu_rate, params):
     V2 = p["V2"]
     V3 = p["V3"]
 
-    lambdas, p_coef = eigendecomposition(k10, k12, k13, k21, k31, V1, V2, V3)
+    a2 = k12 * jnp.sqrt(V1 / V2)
+    a3 = k13 * jnp.sqrt(V1 / V3)
+    k123 = k10 + k12 + k13
+    S = jnp.asarray(
+        [
+            [-k123,   a2,   a3],
+            [   a2, -k21,    0],
+            [   a3,    0, -k31],
+        ]
+    )  # fmt: skip
+
+    lambdas, p_coef = eigendecomposition(S, V1, 0)
+    return eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0, scale=V1)
+
+
+@wrap_jax
+def eigh_advan(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
+    return eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0, scale)
+
+
+def eigendecomposition(S, scale, cmt=0):
+    eigvals, eigvecs = jnp.linalg.eigh(S)
+    lambdas = -eigvals
+    coef = eigvecs[cmt, :] ** 2 / (scale * lambdas)
+    return lambdas, coef
+
+
+def eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
+    lambdas, p_coef = eigendecomposition(S, scale, 0)
+    if y0 is None:
+        y0 = jnp.zeros_like(lambdas)
 
     # Build time grid (identical logic to model.py) ---------------------------
     _meas = np.asarray(meas_time)
