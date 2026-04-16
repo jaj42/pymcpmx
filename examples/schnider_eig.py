@@ -12,9 +12,9 @@ import pytensor.tensor as pt
 from pymc_extras.inference import fit_dadvi
 from pytensor import wrap_jax
 import jax
-from pymcpmx.advan import threecomp_advan as advan
-from pymcpmx.io import read_dataset
-from pymcpmx.utils import add_omegas
+from pmxmc.advan import threecomp_advan as advan
+from pmxmc.io import read_dataset
+from pmxmc.utils import add_omegas
 
 jax.config.update("jax_enable_x64", True)
 

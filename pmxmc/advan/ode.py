@@ -72,7 +72,7 @@ def ode_advan(y0, meas_time, infu_time, infu_rate, params):
             y0=state,
             dt0=None,
             stepsize_controller=stepsize_controller,
-            max_steps=100_000,
+            max_steps=1_000_000,
             saveat=SaveAt(t1=True, solver_state=True, controller_state=True),
             args={**params, "rate": rate},
             made_jump=is_jump,
