@@ -1,6 +1,6 @@
-import pymc as pm
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
+import pymc as pm
 
 
 def add_omegas(model):

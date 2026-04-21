@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from pytensor import wrap_jax
+
 from pmxmc.utils import rate_at
 
 
@@ -15,11 +16,11 @@ def twocomp_advan(meas_time, infu_time, infu_rate, params, y0=None):
     V2 = p["V2"]
 
     a2 = k12 * jnp.sqrt(V1 / V2)
-    k12 = k10 + k12
+    k123 = k10 + k12
     S = jnp.asarray(
         [
-            [-k12,   a2],
-            [  a2, -k21],
+            [-k123,   a2],
+            [   a2, -k21],
         ]
     )  # fmt: skip
     return eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0, scale=V1)
@@ -99,13 +100,3 @@ def eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
 
     Cp = jnp.sum(states_at_meas, axis=-1)  # (n_meas,)
     return Cp
-
-
-# Cp = eigen_wrapper(
-#     y0=[0, 0, 0],
-#     meas_time=meas_time,
-#     infu_time=infu_time,
-#     infu_rate=infu_rate,
-#     params=pk_params,
-# )
-# C_preds.append(Cp)

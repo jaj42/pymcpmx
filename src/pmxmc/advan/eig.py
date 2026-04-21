@@ -2,10 +2,11 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from pytensor import wrap_jax
+
 from pmxmc.utils import rate_at
 
 
-def eigendecomposition(S, scale, cmt=0):
+def eigendecomposition(S, scale, cmt):
     eigvals_c, eigvecs_c = jnp.linalg.eig(S, allow_eigvec_deriv=True)
     eigvals = eigvals_c.real
     eigvecs = eigvecs_c.real

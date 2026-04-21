@@ -1,5 +1,5 @@
 from .eig import eig_advan
-from .eigh import eigh_advan, twocomp_advan, threecomp_advan
+from .eigh import eigh_advan, threecomp_advan, twocomp_advan
 from .expm import expm_advan
 from .ode import ode_advan
 

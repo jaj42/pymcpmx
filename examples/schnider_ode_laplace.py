@@ -5,18 +5,27 @@ os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={cpu_count() 
 os.environ["JAX_PLATFORMS"] = "cpu"
 
 import arviz as az
+import jax
+import jax.numpy as jnp
 import numpy as np
-import nutpie
 import pymc as pm
 import pytensor.tensor as pt
-from pymc_extras.inference import fit_dadvi
-from pytensor import wrap_jax
-import jax
-from pmxmc.advan import threecomp_advan as advan
+from pymc_extras import inference
+
+from pmxmc.advan import ode_advan as advan
 from pmxmc.io import read_dataset
 from pmxmc.utils import add_omegas
 
 jax.config.update("jax_enable_x64", True)
+
+
+def pk_ode(t, y, p):
+    A1, A2, A3 = y
+    k123 = p["k10"] + p["k12"] + p["k13"]
+    ddt_A1 = -k123 * A1 + p["k21"] * A2 + p["k31"] * A3 + p["rate"](t)
+    ddt_A2 = p["k12"] * A1 - p["k21"] * A2
+    ddt_A3 = p["k13"] * A1 - p["k31"] * A3
+    return jnp.array([ddt_A1, ddt_A2, ddt_A3])
 
 
 def build_model(rates, dv, covar, bio_map) -> pm.Model:
@@ -87,8 +96,8 @@ def build_model(rates, dv, covar, bio_map) -> pm.Model:
                 "V1": V1, "V2": V2, "V3": V3,
             }  # fmt: skip
 
-            Cp = advan(meas_time, infu_time, infu_rate, params)
-            C_preds.append(Cp)
+            Ap = advan(meas_time, infu_time, infu_rate, pk_ode, params, y0=[0, 0, 0])
+            C_preds.append(Ap / V1)
 
         IPRED = pt.concatenate(C_preds)
         ERR = IPRED * sigma_prop
@@ -102,9 +111,7 @@ def main():
     model = build_model(rate, dv, covar, bio_map)
     add_omegas(model)
     with model:
-        # compiled = nutpie.compile_pymc_model(model, backend="jax")
-        # idata = nutpie.sample(compiled)
-        idata = fit_dadvi(gradient_backend="jax")
+        idata = inference.fit_laplace(gradient_backend="jax")
     az.to_netcdf(idata, "idata.nc")
 
 

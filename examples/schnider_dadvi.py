@@ -5,13 +5,12 @@ os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={cpu_count() 
 os.environ["JAX_PLATFORMS"] = "cpu"
 
 import arviz as az
+import jax
 import numpy as np
-import nutpie
 import pymc as pm
 import pytensor.tensor as pt
-from pymc_extras.inference import fit_dadvi
-from pytensor import wrap_jax
-import jax
+from pymc_extras import inference
+
 from pmxmc.advan import threecomp_advan as advan
 from pmxmc.io import read_dataset
 from pmxmc.utils import add_omegas
@@ -102,9 +101,9 @@ def main():
     model = build_model(rate, dv, covar, bio_map)
     add_omegas(model)
     with model:
-        compiled = nutpie.compile_pymc_model(model, backend="jax")
-        idata = nutpie.sample(compiled)
-        # idata = fit_dadvi(gradient_backend="jax")
+        # compiled = nutpie.compile_pymc_model(model, backend="jax")
+        # idata = nutpie.sample(compiled)
+        idata = inference.fit_dadvi(gradient_backend="jax")
     az.to_netcdf(idata, "idata.nc")
 
 
