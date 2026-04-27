@@ -10,13 +10,13 @@ dependencies = [
  "arviz-plots>=1.0.0",
  "arviz-stats>=1.0.0",
  "diffrax>=0.7.2",
- "jax",
- "jaxlib==0.9.2 ",
+ "jax>=0.10.0",
  "nutpie>=0.16.8",
  "pandas>=3.0.2",
+ "polars>=1.0.0",
  "pymc>=5.28.4",
  "pymc-extras",
- "pytensor",
+ "pytensor>=2.38.2",
 ]
 
 [build-system]
@@ -27,6 +27,11 @@ build-backend = "hatchling.build"
 packages = ["src/pmxmc"]
 
 [tool.uv.sources]
-pytensor = { path = "../../../devel/upstream/pytensor", editable = true }
+#pytensor = { path = "../../../devel/upstream/pytensor", editable = true }
 jax = { path = "../../../devel/upstream/jax", editable = true }
 pymc-extras = { path = "../upstream/pymc-extras", editable = true }
+
+[dependency-groups]
+dev = [
+    "prek>=0.3.11",
+]
