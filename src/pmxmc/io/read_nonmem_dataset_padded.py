@@ -20,8 +20,8 @@ def extract_rate_schedule(df: pl.DataFrame) -> pl.DataFrame:
     )
     return (
         pl.concat([starts, ends])
-        .sort(['OCCID', "TIME"])
-        .unique(subset=['OCCID', "TIME"], keep="last", maintain_order=True)
+        .sort(["OCCID", "TIME"])
+        .unique(subset=["OCCID", "TIME"], keep="last", maintain_order=True)
     )
 
 
@@ -69,7 +69,7 @@ def read_nonmem_dataset(
         df = df.rename({"@ID": "ID"})
 
     df = (
-        df.with_columns(pl.col("EVID").ge(3).cum_sum().over('ID').alias("OCC"))
+        df.with_columns(pl.col("EVID").ge(3).cum_sum().over("ID").alias("OCC"))
         # df.with_columns((pl.col("EVID") == 4).cum_sum().over("ID").alias("OCC")).sort(
         #     ["ID", "OCC", "TIME"]
         # )
@@ -118,7 +118,7 @@ def read_nonmem_dataset(
             tbeg = min(tbeg, bolus_time_full[0])
 
         occ_rate = rate_sched.filter(pl.col("OCCID") == occ_id)
-        occ_bolus = bolus_sched.filter( pl.col("OCCID") == occ_id)
+        occ_bolus = bolus_sched.filter(pl.col("OCCID") == occ_id)
 
         dts, rates, boluses, meas_idx = build_time_grid(
             meas_time,

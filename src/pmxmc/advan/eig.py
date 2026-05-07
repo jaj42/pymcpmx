@@ -6,7 +6,7 @@ from pytensor import wrap_jax
 from pmxmc.utils import rate_at
 
 
-def eigendecomposition(S, B):
+def eigendecomposition(S, B, f=None):
     eigvals_c, eigvecs_c = lax.linalg.eig(
         S,
         enable_eigvec_derivs=True,
@@ -17,15 +17,22 @@ def eigendecomposition(S, B):
     eigvecs = eigvecs_c.real
     lambdas = -eigvals
 
-    alpha = jnp.linalg.inv(eigvecs) @ B
-    coefs = eigvecs @ jnp.diag(alpha / lambdas).T
+    Vinv = jnp.linalg.inv(eigvecs)
+    alpha_B = Vinv @ B
+    coefs = eigvecs @ jnp.diag(alpha_B / lambdas).T
 
-    return lambdas, coefs
+    if f is not None:
+        alpha_f = Vinv @ f
+        coefs_f = eigvecs @ jnp.diag(alpha_f / lambdas).T
+    else:
+        coefs_f = jnp.zeros_like(coefs)
+
+    return lambdas, coefs, coefs_f
 
 
 @wrap_jax
-def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=None):
-    lambdas, coefs = eigendecomposition(system_matrix, input_matrix)
+def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=None, forcing=None):
+    lambdas, coefs, coefs_f = eigendecomposition(system_matrix, input_matrix, forcing)
 
     tbeg = min(meas_time[0], infu_time[0])
     tend = meas_time[-1]
@@ -45,7 +52,7 @@ def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=N
     def step_fn(A, inputs):
         dt, rate = inputs
         decay = jnp.exp(-lambdas * dt)
-        A_new = A * decay + coefs * rate * (1 - decay)
+        A_new = A * decay + (coefs * rate + coefs_f) * (1 - decay)
         return A_new, A_new
 
     _, all_states = lax.scan(step_fn, y0, (dts, rates))
