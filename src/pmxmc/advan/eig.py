@@ -28,7 +28,7 @@ def eigendecomposition(S, B, f=None, real_eigenvalues=True):
     else:
         coefs_f = jnp.zeros_like(coefs)
 
-    return lambdas, coefs, coefs_f
+    return lambdas, coefs, coefs_f, eigvecs, Vinv
 
 
 @wrap_jax
@@ -43,7 +43,7 @@ def eig_advan(
     real_eigenvalues=True,
     lag=0.0,
 ):
-    lambdas, coefs, coefs_f = eigendecomposition(
+    lambdas, coefs, coefs_f, eigvecs, Vinv = eigendecomposition(
         system_matrix, input_matrix, forcing, real_eigenvalues
     )
 
@@ -63,7 +63,8 @@ def eig_advan(
         n_cmt = len(lambdas)
         y0 = jnp.zeros((n_cmt, n_cmt), dtype=state_dtype)
     else:
-        y0 = jnp.asarray(y0, dtype=state_dtype)
+        x0 = jnp.asarray(y0, dtype=state_dtype)
+        y0 = eigvecs * (Vinv @ x0)  # (n_cmt, n_cmt)
 
     def step_fn(A, inputs):
         dt, rate = inputs
