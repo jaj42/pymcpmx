@@ -41,6 +41,7 @@ def eig_advan(
     y0=None,
     forcing=None,
     real_eigenvalues=True,
+    lag=0.0,
 ):
     lambdas, coefs, coefs_f = eigendecomposition(
         system_matrix, input_matrix, forcing, real_eigenvalues
@@ -52,10 +53,10 @@ def eig_advan(
     _relevant_itimes = infu_time[(infu_time >= tbeg) & (infu_time <= tend)]
     _all_times = np.unique(np.concatenate([_relevant_itimes, meas_time]))
     _dts = np.diff(_all_times)
-    _rates = np.array([rate_at(t, infu_time, infu_rate) for t in _all_times[:-1]])
+    _t_starts = jnp.array(_all_times[:-1])
 
     dts = jnp.array(_dts)
-    rates = jnp.array(_rates)
+    rates = rate_at(_t_starts - lag, infu_time, infu_rate)
 
     state_dtype = jnp.float64 if real_eigenvalues else jnp.complex128
     if y0 is None:
