@@ -54,7 +54,6 @@ def build_model(ds) -> pm.Model:
         for subj_id in ds["subj"]:
             idx = ds["subj_idx"][subj_id]
 
-            # print(dv.xs(354,level='ID'))
             meas_time = ds["dv"].xs(subj_id, level="ID").index
             rate = ds["rate"].xs(subj_id, level="ID")
 

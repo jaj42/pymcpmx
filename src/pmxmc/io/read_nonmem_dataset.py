@@ -8,6 +8,7 @@ pdtonum = partial(pd.to_numeric, errors="coerce")
 
 
 def extract_rates(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.dropna(subset=['RATE','AMT'])
     doses = df.query("RATE > 0")
     doses["TINF"] = doses.eval("AMT / RATE")
     doses["TEND"] = doses.eval("TIME + TINF")
@@ -30,6 +31,7 @@ def extract_rates(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def extract_boluses(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.dropna(subset=['RATE','AMT'])
     boluses = df.query("AMT > 0 & RATE == 0")
     if boluses.empty:
         empty = pd.DataFrame(columns=["AMT"])
@@ -63,7 +65,7 @@ def read_nonmem_dataset(
     else:
         rate = extract_rates(df)
         bolus = extract_boluses(df)
-        dv = df.set_index(["ID", "TIME"])[dv_col]
+        dv = df.set_index(["ID", "TIME"])[dv_col].dropna()
 
     dv = dv[~dv.index.duplicated(keep="first")]
 
