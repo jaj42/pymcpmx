@@ -5,7 +5,7 @@ import pytensor
 import pytensor.tensor as pt
 from pytensor import wrap_jax
 
-from pmxmc.utils import rate_at
+from pmxmc.utils import rate_at_numpy as rate_at
 
 pytensor.config.floatX = "float64"
 jax.config.update("jax_enable_x64", True)
@@ -54,7 +54,7 @@ def threecomp_advan(meas_time, infu_time, infu_rate, params, y0=None):
         ]
     )  # fmt: skip
 
-    lambdas, p_coef = eigendecomposition(S, V1, 0)
+    lambdas, p_coef = eigendecomposition(S)
     return eigh_advan_worker(S, meas_time, infu_time, infu_rate, y0, scale=V1)
 
 
@@ -66,7 +66,6 @@ def eigh_advan(S, meas_time, infu_time, infu_rate, y0=None, scale=1.0):
 def eigendecomposition(S):
     eigvals, eigvecs = jnp.linalg.eigh(S)
     lambdas = -eigvals
-    # coef = eigvecs[cmt, :] ** 2 / (scale * lambdas)
     coefs = eigvecs**2 / lambdas
     return lambdas, coefs
 

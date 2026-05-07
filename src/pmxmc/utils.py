@@ -10,13 +10,26 @@ def add_omegas(model):
                 pm.Deterministic(f"omega_{name[3:]}", var**2)
 
 
-def rate_at(t, infu_time, infu_rate):
+def rate_at_numpy(t, infu_time, infu_rate):
     """Return piecewise-constant infusion rate at time t (numpy, for static use)."""
     if t < infu_time[0]:
         return 0.0
     idx = np.searchsorted(infu_time[1:], t, side="right")
     idx = np.clip(idx, 0, len(infu_rate) - 1)
     return infu_rate[idx]
+
+
+def rate_at(t, infu_time, infu_rate):
+    """Return piecewise-constant infusion rate at time t.
+
+    Works with plain numpy scalars/arrays and with JAX traced values,
+    so it can be called inside a jax.lax.scan with a traced lag offset.
+    """
+    infu_time = jnp.asarray(infu_time)
+    infu_rate = jnp.asarray(infu_rate)
+    idx = jnp.searchsorted(infu_time[1:], t, side="right")
+    idx = jnp.clip(idx, 0, len(infu_rate) - 1)
+    return jnp.where(t < infu_time[0], 0.0, infu_rate[idx])
 
 
 def build_rate_func(infu_time, infu_rate):
