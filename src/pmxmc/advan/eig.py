@@ -6,15 +6,16 @@ from pytensor import wrap_jax
 from pmxmc.utils import rate_at
 
 
-def eigendecomposition(S, B, f=None):
-    eigvals_c, eigvecs_c = lax.linalg.eig(
+def eigendecomposition(S, B, f=None, real_eigenvalues=True):
+    eigvals, eigvecs = lax.linalg.eig(
         S,
         enable_eigvec_derivs=True,
         compute_right_eigenvectors=True,
         compute_left_eigenvectors=False,
     )
-    eigvals = eigvals_c.real
-    eigvecs = eigvecs_c.real
+    if real_eigenvalues:
+        eigvals = eigvals.real
+        eigvecs = eigvecs.real
     lambdas = -eigvals
 
     Vinv = jnp.linalg.inv(eigvecs)
@@ -31,8 +32,19 @@ def eigendecomposition(S, B, f=None):
 
 
 @wrap_jax
-def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=None, forcing=None):
-    lambdas, coefs, coefs_f = eigendecomposition(system_matrix, input_matrix, forcing)
+def eig_advan(
+    system_matrix,
+    input_matrix,
+    meas_time,
+    infu_time,
+    infu_rate,
+    y0=None,
+    forcing=None,
+    real_eigenvalues=True,
+):
+    lambdas, coefs, coefs_f = eigendecomposition(
+        system_matrix, input_matrix, forcing, real_eigenvalues
+    )
 
     tbeg = min(meas_time[0], infu_time[0])
     tend = meas_time[-1]
@@ -45,9 +57,12 @@ def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=N
     dts = jnp.array(_dts)
     rates = jnp.array(_rates)
 
+    state_dtype = jnp.float64 if real_eigenvalues else jnp.complex128
     if y0 is None:
         n_cmt = len(lambdas)
-        y0 = jnp.zeros((n_cmt, n_cmt), dtype=jnp.float64)
+        y0 = jnp.zeros((n_cmt, n_cmt), dtype=state_dtype)
+    else:
+        y0 = jnp.asarray(y0, dtype=state_dtype)
 
     def step_fn(A, inputs):
         dt, rate = inputs
@@ -61,4 +76,8 @@ def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=N
     _meas_indices = np.where(np.isin(_all_times, meas_time))[0]
     states_at_meas = all_states_with_init[_meas_indices]  # (n_meas, n_cmt, n_cmt)
 
-    return jnp.sum(states_at_meas, axis=-1)  # (n_meas, n_cmt)
+    res = jnp.sum(states_at_meas, axis=-1)  # (n_meas, n_cmt)
+    if real_eigenvalues:
+        return res
+    else:
+        return res.real
