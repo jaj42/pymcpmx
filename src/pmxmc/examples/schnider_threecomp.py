@@ -1,17 +1,18 @@
 import os
-from multiprocessing import cpu_count
 from importlib import resources
+from multiprocessing import cpu_count
 
 os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={cpu_count() - 2}"
 os.environ["JAX_PLATFORMS"] = "cpu"
 
-from pmxmc import assets
 import arviz as az
 import jax
 import numpy as np
 import nutpie
 import pymc as pm
 import pytensor.tensor as pt
+
+from pmxmc import assets
 from pmxmc.advan import threecomp_advan as advan
 from pmxmc.io import read_nonmem_dataset
 from pmxmc.utils import add_omegas

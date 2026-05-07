@@ -13,6 +13,7 @@ import unittest
 from importlib import resources
 
 import numpy as np
+
 from pmxmc import assets
 from pmxmc.io import read_nonmem_dataset_padded
 
@@ -112,9 +113,10 @@ class TestModelFit(unittest.TestCase):
         import pytensor
 
         pytensor.config.floatX = "float64"
+        from pymc_extras import inference
+
         from pmxmc.examples.schnider_vectorized import build_model
         from pmxmc.utils import add_omegas
-        from pymc_extras import inference
 
         cls.ds = _load_schnider()
         cls.model = build_model(cls.ds)

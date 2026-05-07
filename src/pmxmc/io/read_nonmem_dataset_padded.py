@@ -1,39 +1,36 @@
-import numpy as np
 from typing import IO
+
+import numpy as np
 import polars as pl
 import pytensor.tensor as pt
+
 
 def extract_rate_schedule(df: pl.DataFrame) -> pl.DataFrame:
     """Infusion start/end records as (ID, TIME, RATE)."""
     doses = df.filter((pl.col("EVID") != 0) & (pl.col("RATE") > 0))
     starts = doses.select(
-        pl.col('OCCID'),
+        pl.col("OCCID"),
         pl.col("TIME"),
         pl.col("RATE").cast(pl.Float64),
     )
     ends = doses.select(
-        pl.col('OCCID'),
+        pl.col("OCCID"),
         (pl.col("TIME") + pl.col("AMT") / pl.col("RATE")).alias("TIME"),
         pl.lit(0.0).alias("RATE"),
     )
-    # return (
-    #     pl.concat([starts, ends])
-    #     .sort(['OCCID', "TIME"])
-    #     .unique(subset=['OCCID', "TIME"], keep="last", maintain_order=True)
-    # )
     return (
-    pl.concat([ends, starts])  # ends first, then starts
-    .sort(['OCCID', "TIME"])
-    .unique(subset=['OCCID', "TIME"], keep="last", maintain_order=True)
-)
+        pl.concat([starts, ends])
+        .sort(['OCCID', "TIME"])
+        .unique(subset=['OCCID', "TIME"], keep="last", maintain_order=True)
+    )
 
 
 def extract_bolus_schedule(df: pl.DataFrame) -> pl.DataFrame:
     """Bolus dose records as (ID, TIME, AMT)."""
     return (
         df.filter((pl.col("EVID") != 0) & (pl.col("RATE") == 0) & (pl.col("AMT") > 0))
-        .select(pl.col('OCCID'), pl.col("TIME"), pl.col("AMT").cast(pl.Float64))
-        .sort(['OCCID', "TIME"])
+        .select(pl.col("OCCID"), pl.col("TIME"), pl.col("AMT").cast(pl.Float64))
+        .sort(["OCCID", "TIME"])
     )
 
 
@@ -67,14 +64,15 @@ def read_nonmem_dataset(
     sep: str = r" ",
     dv_col: str = "DV",
 ):
-    df = pl.read_csv(filepath, separator=sep,infer_schema_length=None)
+    df = pl.read_csv(filepath, separator=sep, infer_schema_length=None)
     if "@ID" in df.columns:
-        df = df.rename({"@ID": 'ID'})
+        df = df.rename({"@ID": "ID"})
 
     df = (
-        # df.with_columns(pl.col("EVID").ge(3).cum_sum().over('ID').alias("OCC"))
-        df.with_columns((pl.col("EVID") == 4).cum_sum().over('ID').alias("OCC"))
-        .sort(['ID', 'OCC',"TIME"])
+        df.with_columns(pl.col("EVID").ge(3).cum_sum().over('ID').alias("OCC"))
+        # df.with_columns((pl.col("EVID") == 4).cum_sum().over("ID").alias("OCC")).sort(
+        #     ["ID", "OCC", "TIME"]
+        # )
     )
     df = df.with_columns(df.select("ID", "OCC").hash_rows().alias("OCCID"))
     occdf = df.select("OCCID", "ID").unique(("OCCID"))
@@ -86,47 +84,41 @@ def read_nonmem_dataset(
 
     obs = (
         df.filter(pl.col("EVID") == 0)
-        .select('OCCID', "TIME", dv_col)
-        .unique(subset=['OCCID', "TIME"], maintain_order=True)
+        .select("OCCID", "TIME", dv_col)
+        .unique(subset=["OCCID", "TIME"], maintain_order=True)
     )
 
     # occ_idx_map = {sid: i for i, sid in enumerate(set(occid_map.values()))}
     occ_idx_map = {sid: i for i, sid in enumerate(sorted(set(occid_map.values())))}
 
-    id_indices=[]
-    dts_list=[]
-    rates_list=[]
-    boluses_list=[]
-    meas_idx_list=[]
+    id_indices = []
+    dts_list = []
+    rates_list = []
+    boluses_list = []
+    meas_idx_list = []
     meas_dv_list = []
-    n_meas_indiv_list =[]
+    n_meas_indiv_list = []
 
     for occ_id in occid_map.keys():
-        obs_np = obs.filter(pl.col('OCCID') == occ_id).to_numpy()
-        meas_time = obs_np[:,1]
+        obs_np = obs.filter(pl.col("OCCID") == occ_id).to_numpy()
+        meas_time = obs_np[:, 1]
         if len(meas_time) == 0:
             continue
-        meas_dv = obs_np[:,2]
+        meas_dv = obs_np[:, 2]
         meas_dv_list.append(meas_dv)
 
         tbeg, tend = meas_time[0], meas_time[-1]
-        infu_time_full = rate_sched.filter(pl.col('OCCID') == occ_id)["TIME"].to_numpy()
-        bolus_time_full = bolus_sched.filter(pl.col('OCCID') == occ_id)["TIME"].to_numpy()
+        infu_time_full = rate_sched.filter(pl.col("OCCID") == occ_id)["TIME"].to_numpy()
+        bolus_time_full = bolus_sched.filter(pl.col("OCCID") == occ_id)[
+            "TIME"
+        ].to_numpy()
         if len(infu_time_full):
             tbeg = min(tbeg, infu_time_full[0])
         if len(bolus_time_full):
             tbeg = min(tbeg, bolus_time_full[0])
 
-        occ_rate = rate_sched.filter(
-            (pl.col('OCCID') == occ_id)
-            # & (pl.col("TIME") >= tbeg)
-            # & (pl.col("TIME") <= tend)
-        )
-        occ_bolus = bolus_sched.filter(
-            (pl.col('OCCID') == occ_id)
-            # & (pl.col("TIME") >= tbeg)
-            # & (pl.col("TIME") <= tend)
-        )
+        occ_rate = rate_sched.filter(pl.col("OCCID") == occ_id)
+        occ_bolus = bolus_sched.filter( pl.col("OCCID") == occ_id)
 
         dts, rates, boluses, meas_idx = build_time_grid(
             meas_time,
@@ -166,24 +158,26 @@ def read_nonmem_dataset(
     )
 
     return {
-        'id':np.array(id_indices),
-        'dt':pt.as_tensor_variable(dts_padded),
-        'rate':pt.as_tensor_variable(rates_padded),
-        'bolus':pt.as_tensor_variable(boluses_padded),
-        'meas_idx':pt.as_tensor_variable(meas_idx_padded),
-        'valid_idx':valid_flat_indices,
-        'dv': np.concatenate(meas_dv_list),
-        'occid_map': occid_map,
-        }
+        "id": np.array(id_indices),
+        "dt": pt.as_tensor_variable(dts_padded),
+        "rate": pt.as_tensor_variable(rates_padded),
+        "bolus": pt.as_tensor_variable(boluses_padded),
+        "meas_idx": pt.as_tensor_variable(meas_idx_padded),
+        "valid_idx": valid_flat_indices,
+        "dv": np.concatenate(meas_dv_list),
+        "occid_map": occid_map,
+    }
 
 
 if __name__ == "__main__":
-    from pmxmc import assets
     from importlib import resources
+
+    from pmxmc import assets
+
     # with resources.open_text(assets, "eleveld.csv") as fd:
     #     ds= read_nonmem_dataset(fd, sep=" ", dv_col="DV")
     with resources.open_text(assets, "schnider.csv") as fd:
-        ds= read_nonmem_dataset(fd,sep=',',dv_col='CP')
+        ds = read_nonmem_dataset(fd, sep=",", dv_col="CP")
 
     print(f"{ds['id'].shape=}")
     print(f"{ds['dt'].type=}")
@@ -193,3 +187,23 @@ if __name__ == "__main__":
     print(f"{ds['valid_idx'].shape=}")
     print(f"{ds['dv'].shape=}")
     print(f"{ds['occid_map']}")
+
+#  +def pad_dataset(ds: dict) -> dict:
+#   150 +    """Pad per-occasion lists into rectangular arrays for vectorised JAX computation.
+#   151 +
+#   152 +    Accepts the dict returned by read_nonmem_dataset and returns:
+#   153 +      id       – np.ndarray (n_occ,)
+#   154 +      dt       – pytensor tensor (n_occ, max_steps)
+#   155 +      rate     – pytensor tensor (n_occ, max_steps)
+#   156 +      bolus    – pytensor tensor (n_occ, max_steps)
+#   157 +      meas_idx – pytensor tensor (n_occ, max_meas), int32
+#   158 +      valid_idx – np.ndarray, flat indices selecting non-padded measurements
+#   159 +      dv       – np.ndarray, concatenated observations
+#   160 +      occid_map – passed through unchanged
+#   161 +    """
+#   162 +    dts_list = ds["dts"]
+#   163 +    rates_list = ds["rates"]
+#   164 +    boluses_list = ds["boluses"]
+#   165 +    meas_idx_list = ds["meas_idx"]
+#   166 +    meas_dv_list = ds["dv"]
+#   167 +

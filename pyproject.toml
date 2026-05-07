@@ -17,6 +17,7 @@ dependencies = [
  "pymc>=5.28.4",
  "pymc-extras",
  "pytensor>=2.38.2",
+ "sympy>=1.14.0",
 ]
 
 [build-system]

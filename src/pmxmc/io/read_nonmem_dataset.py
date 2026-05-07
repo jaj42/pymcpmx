@@ -144,7 +144,9 @@ def read_nonmem_dataset(
 
     # ---- covariates (one row per biological subject) ----
     if covariates:
-        covar = df.drop_duplicates("SUBJID").set_index("SUBJID")[covariates].sort_index()
+        covar = (
+            df.drop_duplicates("SUBJID").set_index("SUBJID")[covariates].sort_index()
+        )
     else:
         covar = pd.DataFrame([])
 
@@ -155,17 +157,9 @@ def read_nonmem_dataset(
 
 
 if __name__ == "__main__":
-    from pmxmc import assets
     from importlib import resources
+
+    from pmxmc import assets
+
     with resources.open_text(assets, "schnider.csv") as fd:
         res = read_nonmem_dataset(fd, sep=",", dv_col="CP")
-
-    # print(res)
-
-    # print(bio_indices)
-    # print(f"{bio_indices.shape=}")
-    # print(f"dts_padded.shape={dts_padded.type}")
-    # print(f"rates_padded.shape={rates_padded.type}")
-    # print(f"boluses_padded.shape={boluses_padded.type}")
-    # print(f"meas_idx_padded.shape={meas_idx_padded.type}")
-    # print(f"{valid_flat_indices.shape=}")

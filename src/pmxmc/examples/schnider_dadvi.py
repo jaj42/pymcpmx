@@ -4,17 +4,19 @@ from multiprocessing import cpu_count
 os.environ["XLA_FLAGS"] = f"--xla_force_host_platform_device_count={cpu_count() - 2}"
 os.environ["JAX_PLATFORMS"] = "cpu"
 
-from pmxmc import assets
 from importlib import resources
+
 import arviz as az
 import jax
 import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
+from pymc_extras import inference
+
+from pmxmc import assets
 from pmxmc.advan import threecomp_advan as advan
 from pmxmc.io import read_nonmem_dataset
 from pmxmc.utils import add_omegas
-from pymc_extras import inference
 
 jax.config.update("jax_enable_x64", True)
 
