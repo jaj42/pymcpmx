@@ -1,20 +1,22 @@
-import jax
 import jax.numpy as jnp
 import numpy as np
-from pytensor import wrap_jax
 from jax import lax
+from pytensor import wrap_jax
 
 from pmxmc.utils import rate_at
 
 
 def eigendecomposition(S, B):
-    eigvals_c, eigvecs_c = lax.linalg.eig(S, enable_eigvec_derivs=True,compute_right_eigenvectors=True,compute_left_eigenvectors=False)
+    eigvals_c, eigvecs_c = lax.linalg.eig(
+        S,
+        enable_eigvec_derivs=True,
+        compute_right_eigenvectors=True,
+        compute_left_eigenvectors=False,
+    )
     eigvals = eigvals_c.real
     eigvecs = eigvecs_c.real
     lambdas = -eigvals
 
-    # C0 = jnp.zeros_like(lambdas)
-    # C0 = C0.at[cmt].set(1.0 / scale)
     alpha = jnp.linalg.inv(eigvecs) @ B
     coefs = eigvecs @ jnp.diag(alpha / lambdas).T
 
@@ -22,9 +24,7 @@ def eigendecomposition(S, B):
 
 
 @wrap_jax
-def eig_advan(
-    system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=None
-):
+def eig_advan(system_matrix, input_matrix, meas_time, infu_time, infu_rate, y0=None):
     lambdas, coefs = eigendecomposition(system_matrix, input_matrix)
 
     tbeg = min(meas_time[0], infu_time[0])
@@ -48,7 +48,7 @@ def eig_advan(
         A_new = A * decay + coefs * rate * (1 - decay)
         return A_new, A_new
 
-    _, all_states = jax.lax.scan(step_fn, y0, (dts, rates))
+    _, all_states = lax.scan(step_fn, y0, (dts, rates))
     all_states_with_init = jnp.concatenate([y0[None, :, :], all_states], axis=0)
 
     _meas_indices = np.where(np.isin(_all_times, meas_time))[0]

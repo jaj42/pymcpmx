@@ -84,16 +84,15 @@ def build_model(rates, dv, covar, bio_map) -> pm.Model:
             k123 = k10 + k12 + k13
             S = pt.stack(
             [
-                pt.stack([   -k123, k21, k31]),
-                pt.stack([     k12, k21,   0]),
-                pt.stack([     k13,   0, k31]),
+                pt.stack([-k123,  k12,  k13]),
+                pt.stack([  k21, -k21,    0]),
+                pt.stack([  k31,    0, -k31]),
             ],
             )  # fmt: skip
-            # B = pt.stack([1.0 / V1, 0,0])
-            B = pt.stack([1.0, 0,0])
+            B = pt.stack([1.0 / V1, 0, 0])
 
-            result = eig_advan(S,B,meas_time, infu_time, infu_rate)
-            C_preds.append(result[:, 0] / V1) # central compartment
+            result = eig_advan(S, B, meas_time, infu_time, infu_rate)
+            C_preds.append(result[:, 0])  # central compartment
 
         IPRED = pt.concatenate(C_preds)
         ERR = IPRED * sigma_prop
