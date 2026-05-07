@@ -8,7 +8,7 @@ pdtonum = partial(pd.to_numeric, errors="coerce")
 
 
 def extract_rates(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.dropna(subset=['RATE','AMT'])
+    df = df.dropna(subset=["RATE", "AMT"])
     doses = df.query("RATE > 0")
     doses["TINF"] = doses.eval("AMT / RATE")
     doses["TEND"] = doses.eval("TIME + TINF")
@@ -31,7 +31,7 @@ def extract_rates(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def extract_boluses(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.dropna(subset=['RATE','AMT'])
+    df = df.dropna(subset=["RATE", "AMT"])
     boluses = df.query("AMT > 0 & RATE == 0")
     if boluses.empty:
         empty = pd.DataFrame(columns=["AMT"])
@@ -110,7 +110,3 @@ if __name__ == "__main__":
         print(k)
         print(v)
         print()
-
-    dv = res["dv"]
-    print(dv)
-    print(dv.xs(354, level="ID"))

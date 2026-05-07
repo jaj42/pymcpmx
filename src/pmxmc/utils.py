@@ -12,18 +12,20 @@ def add_omegas(model=None):
             if name.startswith("sd_"):
                 pm.Deterministic(f"omega_{name[3:]}", var**2)
 
-def add_IIV(variable,sigma,n_subj,model=None):
+
+def add_IIV(variable, sigma, n_subj, model=None):
     if model is None:
         model = pm.Model.get_context()
     with model:
         for name, var in model.named_vars.copy().items():
-            if name == f'theta_{variable}':
+            if name == f"theta_{variable}":
                 pass
                 sd = pm.HalfNormal(f"sd_{variable}", sigma=sigma)
                 eta = pm.Normal(f"eta_{variable}", mu=0, sigma=1, shape=n_subj)
                 return var * pt.exp(eta * sd)
         else:
-            raise ValueError(f'theta_{variable} not in model')
+            raise ValueError(f"theta_{variable} not in model")
+
 
 def rate_at_numpy(t, infu_time, infu_rate):
     """Return piecewise-constant infusion rate at time t (numpy, for static use)."""
