@@ -1,7 +1,9 @@
+import re
 from sys import argv
 
 import arviz as az
 import arviz_base as azb
+import arviz_plots as azp
 import arviz_stats as azs
 import matplotlib.pyplot as plt
 import pymc as pm
@@ -9,8 +11,25 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 azb.rcParams["plot.max_subplots"] = 500
 
+patterns = {
+    "omega": "^omega.*[^_]$",
+    "theta": "^theta.*[^_]$",
+    "sigma": "^sigma.*[^_]$",
+    "eta": "^eta.*[^_]$",
+}
 
-def sample(model, trace):
+
+def _available_parameters(idata):
+    params = {k: False for k in patterns.keys()}
+    for param_type, param_pattern in patterns.items():
+        if any(re.search(param_pattern, v) for v in idata.posterior.data_vars):
+            params[param_type] = True
+    return params
+
+
+def sample_predictive(trace, model=None):
+    if model is None:
+        model = pm.Model.get_context()
     with model:
         prior = pm.sample_prior_predictive(draws=1000)
         posterior = pm.sample_posterior_predictive(trace)
@@ -20,103 +39,90 @@ def sample(model, trace):
     return idata
 
 
-def main():
-    # rate, dv, covar, bio_map = read_dataset("./data.csv")
-    # model = build_model(rate, dv, covar, bio_map)
+def plot_param_type(idata, name, pattern, device):
+    az.plot_trace(idata, var_names=[pattern], filter_vars="regex")
+    plt.suptitle(f"{name} Trace")
+    plt.tight_layout()
+    device.savefig()
+    plt.close()
 
-    try:
-        infile = argv[1]
-    except IndexError:
-        infile = "./idata.nc"
-    idata = az.from_netcdf(infile)
-    # idata = sample(model, idata)
+    az.plot_posterior(idata, var_names=[pattern], filter_vars="regex")
+    plt.suptitle(f"{name} posterior")
+    plt.tight_layout()
+    device.savefig()
+    plt.close()
+
+    # azp.plot_prior_posterior(idata, var_names=[pattern], filter_vars="regex")
+    # plt.suptitle(f"{name} prior vs posterior")
+    # plt.tight_layout()
+    # pdf.savefig()
+    # plt.close()
+
+    fig, ax = plt.subplots()
+    ax.axis("off")
+    ax.table(
+        azs.summary(idata, var_names=[pattern], filter_vars="regex"),
+        loc="center",
+    )
+    fig.suptitle(name)
+    plt.tight_layout()
+    device.savefig(fig)
+    plt.close()
+
+
+def plot(idata, model=None, prior_predictive=False, posterior_predictive=False):
+    params = _available_parameters(idata)
 
     with PdfPages("output.pdf") as pdf:
-        # azp.plot_ppc_dist(idata, group="prior")
-        # pdf.savefig()
-        # plt.close()
+        if prior_predictive:
+            azp.plot_ppc_dist(idata, group="prior")
+            plt.suptitle("Prior Predictive")
+            pdf.savefig()
+            plt.close()
 
-        # az.plot_ppc(idata, group="posterior")
-        # pdf.savefig()
-        # plt.close()
+        if posterior_predictive:
+            az.plot_ppc(idata, group="posterior")
+            plt.suptitle("Posterior Predictive")
+            pdf.savefig()
+            plt.close()
 
         # THETA
-        az.plot_trace(idata, var_names=["^theta.*[^_]$"], filter_vars="regex")
-        plt.suptitle("THETA Trace")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-
-        az.plot_posterior(idata, var_names=["^theta.*[^_]$"], filter_vars="regex")
-        plt.suptitle("THETA posterior")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-
-        # azp.plot_prior_posterior(idata, var_names=["^theta.*[^_]$"], filter_vars="regex")
-        # plt.suptitle("THETA prior vs posterior")
-        # plt.tight_layout()
-        # pdf.savefig()
-        # plt.close()
-
-        fig, ax = plt.subplots()
-        ax.axis("off")
-        ax.table(
-            azs.summary(idata, var_names=["^theta.*[^_]$"], filter_vars="regex"),
-            loc="center",
-        )
-        fig.suptitle("THETA")
-        plt.tight_layout()
-        pdf.savefig(fig)
-        plt.close()
+        if params["theta"]:
+            plot_param_type(idata, "THETA", patterns["theta"], pdf)
 
         # OMEGA
-        az.plot_trace(idata, var_names=["^omega.*[^_]$"], filter_vars="regex")
-        plt.suptitle("OMEGA Trace")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
+        if params["omega"]:
+            plot_param_type(idata, "OMEGA", patterns["omega"], pdf)
 
-        az.plot_posterior(idata, var_names=["^omega.*[^_]$"], filter_vars="regex")
-        plt.suptitle("OMEGA posterior")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-
-        # azp.plot_prior_posterior(idata, var_names=["^omega.*[^_]$"], filter_vars="regex")
-        # plt.suptitle("OMEGA prior vs posterior")
+        # SIGMA
+        if params["sigma"]:
+            plot_param_type(idata, "SIGMA", patterns["sigma"], pdf)
+        # az.plot_trace(idata, var_names=["^sigma.*[^_]$"], filter_vars="regex")
+        # plt.suptitle("SIGMA Trace")
         # plt.tight_layout()
         # pdf.savefig()
         # plt.close()
-
-        fig, ax = plt.subplots()
-        ax.axis("off")
-        ax.table(
-            azs.summary(idata, var_names=["^omega.*[^_]$"], filter_vars="regex"),
-            loc="center",
-        )
-        fig.suptitle("OMEGA")
-        plt.tight_layout()
-        pdf.savefig(fig)
-        plt.close()
-
-        # SIGMA
-        az.plot_trace(idata, var_names=["^sigma.*[^_]$"], filter_vars="regex")
-        plt.suptitle("SIGMA Trace")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
 
         # ETA
         az.plot_trace(
             idata,
-            var_names=["^eta.*[^_]$"],
+            var_names=[patterns["eta"]],
             filter_vars="regex",
         )
         plt.suptitle("ETA Trace")
         plt.tight_layout()
         pdf.savefig()
         plt.close()
+
+
+def main():
+    try:
+        infile = argv[1]
+    except IndexError:
+        infile = "./idata.nc"
+    idata = az.from_netcdf(infile)
+
+    plot(idata)
 
 
 if __name__ == "__main__":
