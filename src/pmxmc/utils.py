@@ -2,6 +2,8 @@ import jax.numpy as jnp
 import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
+from pymc.distributions import transforms
+from pymc_extras.utils.prior import prior_from_idata
 
 
 def add_omegas(model=None):
@@ -9,7 +11,7 @@ def add_omegas(model=None):
         model = pm.Model.get_context()
     with model:
         for name, var in model.named_vars.copy().items():
-            if name.startswith("sd_"):
+            if name.startswith("sd_") and not name.endswith("log__"):
                 pm.Deterministic(f"omega_{name[3:]}", var**2)
 
 
@@ -24,6 +26,20 @@ def add_IIV(variable, sigma, n_subj, model=None):
                 return var * pt.exp(eta * sd)
         else:
             raise ValueError(f"theta_{variable} not in model")
+
+
+def load_parameters(idata, model=None):
+    if model is None:
+        model = pm.Model.get_context()
+    priors = [
+        v
+        for v in idata["posterior"].data_vars
+        if any(v.startswith(pfx) for pfx in ["theta", "sd", "sigma"])
+        and not v.endswith("log__")
+    ]
+    prior_kwargs = {v: transforms.log for v in priors}
+    with model:
+        return prior_from_idata(idata, **prior_kwargs)
 
 
 def rate_at_numpy(t, infu_time, infu_rate):
