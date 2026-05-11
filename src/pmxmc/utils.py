@@ -19,7 +19,6 @@ def add_IIV(variable, sigma, n_subj, model=None):
     with model:
         for name, var in model.named_vars.copy().items():
             if name == f"theta_{variable}":
-                pass
                 sd = pm.HalfNormal(f"sd_{variable}", sigma=sigma)
                 eta = pm.Normal(f"eta_{variable}", mu=0, sigma=1, shape=n_subj)
                 return var * pt.exp(eta * sd)
