@@ -70,10 +70,16 @@ def plot_param_type(idata, name, pattern, device):
     plt.close()
 
 
-def plot(idata, model=None, prior_predictive=False, posterior_predictive=False):
+def plot_idata(
+    idata,
+    output="output.pdf",
+    model=None,
+    prior_predictive=False,
+    posterior_predictive=False,
+):
     params = _available_parameters(idata)
 
-    with PdfPages("output.pdf") as pdf:
+    with PdfPages(output) as pdf:
         if prior_predictive:
             azp.plot_ppc_dist(idata, group="prior")
             plt.suptitle("Prior Predictive")
@@ -122,7 +128,7 @@ def main():
         infile = "./idata.nc"
     idata = az.from_netcdf(infile)
 
-    plot(idata)
+    plot_idata(idata)
 
 
 if __name__ == "__main__":
