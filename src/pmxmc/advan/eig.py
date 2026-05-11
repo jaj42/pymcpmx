@@ -47,16 +47,11 @@ def eig_advan(
         system_matrix, input_matrix, forcing, real_eigenvalues
     )
 
-    tbeg = min(meas_time[0], infu_time[0])
-    tend = meas_time[-1]
+    all_times = np.unique(np.concatenate([infu_time, meas_time]))
+    starts = jnp.array(all_times[:-1])
+    steps = np.diff(all_times)
 
-    _relevant_itimes = infu_time[(infu_time >= tbeg) & (infu_time <= tend)]
-    _all_times = np.unique(np.concatenate([_relevant_itimes, meas_time]))
-    _dts = np.diff(_all_times)
-    _t_starts = jnp.array(_all_times[:-1])
-
-    dts = jnp.array(_dts)
-    rates = rate_at(_t_starts - lag, infu_time, infu_rate)
+    rates = rate_at(starts - lag, infu_time, infu_rate)
 
     state_dtype = jnp.float64 if real_eigenvalues else jnp.complex128
     if y0 is None:
@@ -72,11 +67,11 @@ def eig_advan(
         A_new = A * decay + (coefs * rate + coefs_f) * (1 - decay)
         return A_new, A_new
 
-    _, all_states = lax.scan(step_fn, y0, (dts, rates))
+    _, all_states = lax.scan(step_fn, y0, (steps, rates))
     all_states_with_init = jnp.concatenate([y0[None, :, :], all_states], axis=0)
 
-    _meas_indices = np.where(np.isin(_all_times, meas_time))[0]
-    states_at_meas = all_states_with_init[_meas_indices]  # (n_meas, n_cmt, n_cmt)
+    meas_idx = np.searchsorted(all_times, meas_time)
+    states_at_meas = all_states_with_init[meas_idx]  # (n_meas, n_cmt, n_cmt)
 
     res = jnp.sum(states_at_meas, axis=-1)  # (n_meas, n_cmt)
     if real_eigenvalues:
