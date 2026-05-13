@@ -3,7 +3,6 @@ from sys import argv
 
 import arviz as az
 import arviz_base as azb
-import arviz_plots as azp
 import arviz_stats as azs
 import matplotlib.pyplot as plt
 import pymc as pm
@@ -52,12 +51,6 @@ def plot_param_type(idata, name, pattern, device):
     device.savefig()
     plt.close()
 
-    # azp.plot_prior_posterior(idata, var_names=[pattern], filter_vars="regex")
-    # plt.suptitle(f"{name} prior vs posterior")
-    # plt.tight_layout()
-    # pdf.savefig()
-    # plt.close()
-
     fig, ax = plt.subplots()
     ax.axis("off")
     ax.table(
@@ -81,14 +74,16 @@ def plot_idata(
 
     with PdfPages(output) as pdf:
         if prior_predictive:
-            azp.plot_ppc_dist(idata, group="prior")
+            az.plot_ppc(idata, group="prior")
             plt.suptitle("Prior Predictive")
+            plt.tight_layout()
             pdf.savefig()
             plt.close()
 
         if posterior_predictive:
             az.plot_ppc(idata, group="posterior")
             plt.suptitle("Posterior Predictive")
+            plt.tight_layout()
             pdf.savefig()
             plt.close()
 
@@ -103,22 +98,18 @@ def plot_idata(
         # SIGMA
         if params["sigma"]:
             plot_param_type(idata, "SIGMA", patterns["sigma"], pdf)
-        # az.plot_trace(idata, var_names=["^sigma.*[^_]$"], filter_vars="regex")
-        # plt.suptitle("SIGMA Trace")
-        # plt.tight_layout()
-        # pdf.savefig()
-        # plt.close()
 
         # ETA
-        az.plot_trace(
-            idata,
-            var_names=[patterns["eta"]],
-            filter_vars="regex",
-        )
-        plt.suptitle("ETA Trace")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
+        if params["eta"]:
+            az.plot_trace(
+                idata,
+                var_names=[patterns["eta"]],
+                filter_vars="regex",
+            )
+            plt.suptitle("ETA Trace")
+            plt.tight_layout()
+            pdf.savefig()
+            plt.close()
 
 
 def main():

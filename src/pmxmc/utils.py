@@ -34,7 +34,7 @@ def load_parameters(idata, model=None):
     priors = [
         v
         for v in idata["posterior"].data_vars
-        if any(v.startswith(pfx) for pfx in ["theta", "sd", "sigma"])
+        if any(v.startswith(pfx) for pfx in ["theta", "sd"])
         and not v.endswith("log__")
     ]
     prior_kwargs = {v: transforms.log for v in priors}
