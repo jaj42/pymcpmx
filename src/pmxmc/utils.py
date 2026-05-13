@@ -28,14 +28,26 @@ def add_IIV(variable, sigma, n_subj, model=None):
             raise ValueError(f"theta_{variable} not in model")
 
 
-def load_parameters(idata, model=None):
+def load_parameters(
+    idata, theta=True, sd=True, omega=False, sigma=False, eta=False, model=None
+):
     if model is None:
         model = pm.Model.get_context()
+    candidates = []
+    if theta:
+        candidates.append("theta")
+    if sd:
+        candidates.append("sd")
+    if omega:
+        candidates.append("omega")
+    if sigma:
+        candidates.append("sigma")
+    if eta:
+        candidates.append("eta")
     priors = [
         v
         for v in idata["posterior"].data_vars
-        if any(v.startswith(pfx) for pfx in ["theta", "sd"])
-        and not v.endswith("log__")
+        if any(v.startswith(pfx) for pfx in candidates) and not v.endswith("log__")
     ]
     prior_kwargs = {v: transforms.log for v in priors}
     with model:
