@@ -49,6 +49,18 @@ def load_parameters(
         return prior_from_idata(idata, var_names=normal_priors, **lognormal_priors)
 
 
+def sample_predictive(trace, model=None):
+    if model is None:
+        model = pm.Model.get_context()
+    with model:
+        prior = pm.sample_prior_predictive(draws=1000)
+        posterior = pm.sample_posterior_predictive(trace)
+    idata = trace.copy()
+    idata.extend(prior)
+    idata.extend(posterior)
+    return idata
+
+
 def rate_at_numpy(t, infu_time, infu_rate):
     """Return piecewise-constant infusion rate at time t (numpy, for static use)."""
     if t < infu_time[0]:

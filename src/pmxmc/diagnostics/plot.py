@@ -5,7 +5,6 @@ import arviz as az
 import arviz_base as azb
 import arviz_stats as azs
 import matplotlib.pyplot as plt
-import pymc as pm
 from matplotlib.backends.backend_pdf import PdfPages
 
 azb.rcParams["plot.max_subplots"] = 500
@@ -24,18 +23,6 @@ def _available_parameters(idata):
         if any(re.search(param_pattern, v) for v in idata.posterior.data_vars):
             params[param_type] = True
     return params
-
-
-def sample_predictive(trace, model=None):
-    if model is None:
-        model = pm.Model.get_context()
-    with model:
-        prior = pm.sample_prior_predictive(draws=1000)
-        posterior = pm.sample_posterior_predictive(trace)
-    idata = trace.copy()
-    idata.extend(prior)
-    idata.extend(posterior)
-    return idata
 
 
 def plot_param_type(idata, name, pattern, device):
