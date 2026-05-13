@@ -15,17 +15,14 @@ def add_omegas(model=None):
                 pm.Deterministic(f"omega_{name[3:]}", var**2)
 
 
-def add_IIV(variable, sigma, n_subj, model=None):
+def with_IIV(variable, sigma, n, model=None):
     if model is None:
         model = pm.Model.get_context()
+    var_name = variable.name.rsplit("_", 1)[-1]
     with model:
-        for name, var in model.named_vars.copy().items():
-            if name == f"theta_{variable}":
-                sd = pm.HalfNormal(f"sd_{variable}", sigma=sigma)
-                eta = pm.Normal(f"eta_{variable}", mu=0, sigma=1, shape=n_subj)
-                return var * pt.exp(eta * sd)
-        else:
-            raise ValueError(f"theta_{variable} not in model")
+        sd = pm.HalfNormal(f"sd_{var_name}", sigma=sigma)
+        eta = pm.Normal(f"eta_{var_name}", mu=0, sigma=1, shape=n)
+        return variable * pt.exp(eta * sd)
 
 
 def load_parameters(
@@ -33,25 +30,23 @@ def load_parameters(
 ):
     if model is None:
         model = pm.Model.get_context()
-    candidates = []
-    if theta:
-        candidates.append("theta")
-    if sd:
-        candidates.append("sd")
-    if omega:
-        candidates.append("omega")
-    if sigma:
-        candidates.append("sigma")
-    if eta:
-        candidates.append("eta")
-    priors = [
-        v
-        for v in idata["posterior"].data_vars
-        if any(v.startswith(pfx) for pfx in candidates) and not v.endswith("log__")
-    ]
-    prior_kwargs = {v: transforms.log for v in priors}
+    normal_priors = []
+    lognormal_priors = {}
+    for v in idata["posterior"].data_vars:
+        if v.endswith("log__"):
+            continue
+        elif theta and v.startswith("theta"):
+            lognormal_priors[v] = transforms.log
+        elif sd and v.startswith("sd"):
+            lognormal_priors[v] = transforms.log
+        elif omega and v.startswith("omega"):
+            lognormal_priors[v] = transforms.log
+        elif sigma and v.startswith("sigma"):
+            lognormal_priors[v] = transforms.log
+        elif eta and v.startswith("eta"):
+            normal_priors.append(v)
     with model:
-        return prior_from_idata(idata, **prior_kwargs)
+        return prior_from_idata(idata, var_names=normal_priors, **lognormal_priors)
 
 
 def rate_at_numpy(t, infu_time, infu_rate):
